@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import ThemeProvider from "@/providers/theme";
 import "@/styles/globals.css";
 import type { Metadata } from "next";
 import { Inter, Poppins } from "next/font/google";
@@ -23,7 +24,7 @@ const poppins = Poppins({
 
 export default function RootLayout({ children }: Readonly<RootLayoutProps>) {
   return (
-    <html lang="pt-br">
+    <html lang="pt-br" suppressHydrationWarning>
       <body
         className={cn(
           "min-h-screen w-full bg-background dark:bg-background",
@@ -31,7 +32,7 @@ export default function RootLayout({ children }: Readonly<RootLayoutProps>) {
           poppins.variable,
         )}
       >
-        {children}
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

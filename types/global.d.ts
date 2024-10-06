@@ -3,3 +3,7 @@ interface RootLayoutProps {
 }
 
 interface TemplateProps extends RootLayoutProps {}
+
+interface ContainerProps extends RootLayoutProps {}
+
+interface ThemeProviderProps extends RootLayoutProps {}
