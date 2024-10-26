@@ -4,7 +4,7 @@ import { LogInForm } from "./_components/LoginForm";
 export default async function LoginPage() {
   return (
     <Container>
-      <LogInForm />;
+      <LogInForm />
     </Container>
   );
 }
