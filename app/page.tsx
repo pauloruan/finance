@@ -14,7 +14,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import {
   Table,
   TableBody,
@@ -24,11 +23,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import { Chart } from "./_components/Chart";
-import { randomUUID } from "crypto";
 
-export const description =
-  "An orders dashboard with a sidebar navigation. The sidebar has icon navigation. The content area has a breadcrumb and search in the header. The main area has a list of recent orders with a filter and export button. The main area also has a detailed view of a single order with order details, shipping information, billing information, customer information, and payment information.";
+// export const description =
+//   "An orders dashboard with a sidebar navigation. The sidebar has icon navigation. The content area has a breadcrumb and search in the header. The main area has a list of recent orders with a filter and export button. The main area also has a detailed view of a single order with order details, shipping information, billing information, customer information, and payment information.";
 
 enum PaymentMethod {
   PIX = "PIX",
@@ -40,15 +39,15 @@ enum PaymentMethod {
   CREDIT = "CARTÃO DE CRÉDITO",
 }
 
-enum Recurrence {
-  ONCE = "ÚNICA",
-  DAILY = "DIÁRIA",
-  WEEKLY = "SEMANAL",
-  MONTHLY = "MENSAL",
-  QUARTERLY = "TRIMESTRAL",
-  SEMIANNUALLY = "SEMESTRAL",
-  YEARLY = "ANUAL",
-}
+// enum Recurrence {
+//   ONCE = "ÚNICA",
+//   DAILY = "DIÁRIA",
+//   WEEKLY = "SEMANAL",
+//   MONTHLY = "MENSAL",
+//   QUARTERLY = "TRIMESTRAL",
+//   SEMIANNUALLY = "SEMESTRAL",
+//   YEARLY = "ANUAL",
+// }
 
 interface Institution {
   id: string;
@@ -69,40 +68,55 @@ interface Institution {
 //   updatedAt: Date;
 // }
 
-interface Payment {
+// interface Payment { // TODO: Renomear para "Transaction"
+interface Transaction {
   id: string;
   method: PaymentMethod;
   amount: number;
   count: number;
   dueDate: Date;
   paymentDate: Date | null;
-  recurrenceAt: Date| null;
+  recurrenceAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
-interface Transaction {
+interface FinancialRecord {
   id: string;
   title: string;
   institution: Institution;
-  payments: Array<Payment>;
+  transactions: Array<Transaction>;
   createdAt: Date;
   updatedAt: Date;
 }
 
-interface Expense extends Transaction {}
-
-interface Salary extends Transaction {}
-
-interface ChartData {
-  month: string;
-  salaries: number;
-  expenses: number;
+interface Expense extends FinancialRecord {
+  type: "expense";
 }
+
+interface Income extends FinancialRecord {
+  type: "income";
+}
+
+// interface ChartData {
+//   month: string;
+//   salaries: number;
+//   expenses: number;
+// }
+
+interface EnrichedTransaction extends Transaction {
+  parentTitle: string;
+  parentInstitution: Institution;
+  type: "income" | "expense";
+}
+
+// TODO: Referência -> https://dribbble.com/shots/22462116-Mobile-Banking-Mobile-App-Screens
+// TODO: Implementar:
 
 export default async function Home() {
   let user = undefined;
   const session = await auth();
+  console.log("session:", JSON.stringify(session, null, 2));
   if (session) {
     user = session.user;
   } else {
@@ -123,575 +137,80 @@ export default async function Home() {
       createdAt: new Date("2024-10-04"),
       updatedAt: new Date("2024-10-04"),
     },
-  ]
-  const salaries: Array<Salary> = [
+  ];
+  const incomes: Array<Income> = [
     {
       id: crypto.randomUUID(),
+      type: "income",
       title: "Salário",
-      createdAt: new Date("2024-10-04"),
-      updatedAt: new Date("2024-10-04"),
       institution: institutions[0],
-      payment: {
-        id: crypto.randomUUID(),
-        dueDate: new Date("2024-10-07"),
-        paymentDate: new Date("2024-10-04"),
-        method: PaymentMethod.DEPOSIT,
-        recurrences: [
-          {
-            id: crypto.randomUUID(),
-            current: 1,
-            amount:  1522.92,
-            recurrenceAt: new Date("2024-10-04"),
-            recurrenceType: Recurrence.MONTHLY,
-            createdAt: new Date("2024-10-04"),
-            updatedAt: new Date("2024-10-04"),
-          }
-        ],
-        createdAt: new Date("2024-10-04"),
-        updatedAt: new Date("2024-10-04"),
-      },
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Vale Alimentação",
-      institution: institutions[1],
-      payment: {
-        id: crypto.randomUUID(),
-        method: PaymentMethod.VA,
-        recurrences: [
-          {
-            id: crypto.randomUUID(),
-            current: 1,
-            amount: 417.6,
-            recurrenceType: Recurrence.MONTHLY,
-            dueDate: new Date("2024-10-04"),
-            paymentDate: new Date("2024-10-04"),
-            recurrenceAt: new Date("2024-09-09"),
-            createdAt: new Date("2024-09-09"),
-            updatedAt: new Date("2024-09-09"),
-          },
-          {
-            id: crypto.randomUUID(),
-            current: 2,
-            amount: 500.0,
-            recurrenceAt: new Date("2024-10-26"),
-            recurrenceType: Recurrence.MONTHLY,
-            createdAt: new Date("2024-10-26"),
-            updatedAt: new Date("2024-10-26"),
-          },
-          {
-            id: crypto.randomUUID(),
-            current: 2,
-            amount: 500.0,
-            recurrenceAt: new Date("2024-10-26"),
-            recurrenceType: Recurrence.MONTHLY,
-            createdAt: new Date("2024-10-26"),
-            updatedAt: new Date("2024-10-26"),
-          },
-        ],
-        createdAt: new Date("2024-10-04"),
-        updatedAt: new Date("2024-10-04"),
-      },
-      createdAt: new Date("2024-10-04"),
-      updatedAt: new Date("2024-10-04"),
+      transactions: [
+        {
+          id: crypto.randomUUID(),
+          method: PaymentMethod.DEPOSIT,
+          amount: 3000,
+          count: 1,
+          dueDate: new Date("2025-08-10T00:00:00"),
+          paymentDate: new Date("2025-08-10T00:00:00"),
+          recurrenceAt: new Date("2025-08-10T00:00:00"),
+          createdAt: new Date("2025-08-10T00:00:00"),
+          updatedAt: new Date("2025-08-10T00:00:00"),
+        },
+        {
+          id: crypto.randomUUID(),
+          method: PaymentMethod.DEPOSIT,
+          amount: 3000,
+          count: 2,
+          dueDate: new Date("2025-09-10T00:00:00"),
+          paymentDate: null,
+          recurrenceAt: new Date("2025-08-10T00:00:00"),
+          createdAt: new Date("2025-08-10T00:00:00"),
+          updatedAt: new Date("2025-08-10T00:00:00"),
+        },
+      ],
+      createdAt: new Date("2025-08-10T00:00:00"),
+      updatedAt: new Date("2025-08-10T00:00:00"),
     },
   ];
+
   const expenses: Array<Expense> = [
     {
       id: crypto.randomUUID(),
-      title: "Aporte no Cofrinho Pelo Picpay Card",
-      institution: institutions[0],
-      payment: {
-        id: crypto.randomUUID(),
-        dueDate: new Date("2024-10-05"),
-        method: PaymentMethod.DEPOSIT,
-        paymentDate: new Date("2024-10-05"),
-        recurrences: [
-          {
-            id: crypto.randomUUID(),
-            recurrenceType: Recurrence.ONCE,
-            recurrenceAt: new Date("2024-10-05"),
-            current: 1,
-            amount: 2.0,
-            createdAt: new Date("2024-10-05"),
-            updatedAt: new Date("2024-10-05"),
-          }
-        ],
-        createdAt: new Date("2024-10-05"),
-        updatedAt: new Date("2024-10-05"),
-      },
-      createdAt: new Date("2024-10-05"),
-      updatedAt: new Date("2024-10-05"),
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Aporte na carteira Cofrinho por compra parcial",
-      institution: institutions[0],
-      payment: {
-        id: crypto.randomUUID(),
-        dueDate: new Date("2024-10-05"),
-        method: PaymentMethod.CREDIT,
-        paymentDate: new Date("2024-10-05"),
-        recurrences: [
-          {
-            id: crypto.randomUUID(),
-            current: 1,
-            amount: 41.73,
-            recurrenceAt: new Date("2024-10-05"),
-            recurrenceType: Recurrence.ONCE,
-            createdAt: new Date("2024-10-05"),
-            updatedAt: new Date("2024-10-05"),
-          },
-        ],
-        createdAt: new Date("2024-10-05"),
-        updatedAt: new Date("2024-10-05"),
-      },
-      createdAt: new Date("2024-10-05"),
-      updatedAt: new Date("2024-10-05"),
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Aporte na carteira Cofrinho por compra parcial",
-      institution: institutions[0],
-      payment: {
-        id: crypto.randomUUID(),
-        dueDate: new Date("2024-10-05"),
-        method: PaymentMethod.CREDIT,
-        paymentDate: new Date("2024-10-05"),
-        recurrences: [
-          {
-            id: crypto.randomUUID(),
-            amount: 7.98,
-            current: 1,
-            recurrenceAt: new Date("2024-10-05"),
-            recurrenceType: Recurrence.ONCE,
-            createdAt: new Date("2024-10-05"),
-            updatedAt: new Date("2024-10-05"),
-          },
-        ],
-        createdAt: new Date("2024-10-05"),
-        updatedAt: new Date("2024-10-05"),
-      },
-      createdAt: new Date("2024-10-05"),
-      updatedAt: new Date("2024-10-05"),
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Pix Enviado",
-      institution: institutions[0],
-      payment: {
-        id: crypto.randomUUID(),
-        dueDate: new Date("2024-10-05"),
-        method: PaymentMethod.PIX,
-        paymentDate: new Date("2024-10-05"),
-        recurrences: [
-
-          {
-            id: crypto.randomUUID(),
-          amount: 53.0,
-          current: 1,
-          recurrenceAt: new Date("2024-10-05"),
-          recurrenceType: Recurrence.ONCE,
-          createdAt: new Date("2024-10-05"),
-          updatedAt: new Date("2024-10-05"),}
-        ],
-
-        createdAt: new Date("2024-10-05"),
-        updatedAt: new Date("2024-10-05"),
-      },
-      createdAt: new Date("2024-10-05"),
-      updatedAt: new Date("2024-10-05"),
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Pagamento realizado - PicPay Card Débito",
-      institution: institutions[0],
-      payment: {
-        id: crypto.randomUUID(),
-        dueDate: new Date("2024-10-05"),
-        method: PaymentMethod.DEBIT,
-        paymentDate: new Date("2024-10-05"),
-        recurrences: [{
+      type: "expense",
+      title: "Aluguel",
+      institution: institutions[1],
+      transactions: [
+        {
           id: crypto.randomUUID(),
-          amount: 20.25,
-          current: 1,
-          recurrenceAt: new Date("2024-10-05"),
-          recurrenceType: Recurrence.ONCE,
-          createdAt: new Date("2024-10-05"),
-          updatedAt: new Date("2024-10-05"),
-        },],
-        createdAt: new Date("2024-10-05"),
-        updatedAt: new Date("2024-10-05"),
-      },
-      createdAt: new Date("2024-10-05"),
-      updatedAt: new Date("2024-10-05"),
+          method: PaymentMethod.PIX,
+          amount: 500,
+          count: 1,
+          dueDate: new Date("2025-08-10T00:00:00"),
+          paymentDate: new Date("2025-08-10T00:00:00"),
+          recurrenceAt: new Date("2025-08-10T00:00:00"),
+          createdAt: new Date("2025-08-10T00:00:00"),
+          updatedAt: new Date("2025-08-10T00:00:00"),
+        },
+        {
+          id: crypto.randomUUID(),
+          method: PaymentMethod.PIX,
+          amount: 500,
+          count: 2,
+          dueDate: new Date("2025-09-10T00:00:00"),
+          paymentDate: null,
+          recurrenceAt: new Date("2025-08-10T00:00:00"),
+          createdAt: new Date("2025-08-10T00:00:00"),
+          updatedAt: new Date("2025-08-10T00:00:00"),
+        },
+      ],
+      createdAt: new Date("2025-08-10T00:00:00"),
+      updatedAt: new Date("2025-08-10T00:00:00"),
     },
-    {
-      id: crypto.randomUUID(),
-      title: "Pagamento realizado / Pagamento recebido",
-      institution: institutions[0],
-      payment: {
-        id: crypto.randomUUID(),
-        dueDate: new Date("2024-10-04"),
-        paymentDate: new Date("2024-10-04"),
-        method: PaymentMethod.TRANSFER,
-        recurrences: [
-          {
-            id: crypto.randomUUID(),
-            amount: 20.0,
-            current: 1,
-            recurrenceAt: new Date("2024-10-04"),
-            recurrenceType: Recurrence.ONCE,
-            createdAt: new Date("2024-10-04"),
-            updatedAt: new Date("2024-10-04"),
-          }
-        ],
-        createdAt: new Date("2024-10-04"),
-        updatedAt: new Date("2024-10-04"),
-      },
-      createdAt: new Date("2024-10-04"),
-      updatedAt: new Date("2024-10-04"),
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Pagamento realizado / Pagamento recebido",
-      institution: institutions[0], // Supondo que `institutions` é um array definido com objetos `Institution`
-      payment: {
-        id: crypto.randomUUID(),
-        dueDate: new Date("2024-10-04"),
-        paymentDate: new Date("2024-10-04"),
-        method: PaymentMethod.TRANSFER,
-        recurrences: [
-          {
-            id: crypto.randomUUID(),
-            amount: 8.0,
-            current: 1,
-            recurrenceAt: new Date("2024-10-04"),
-            recurrenceType: Recurrence.ONCE,
-            createdAt: new Date("2024-10-04"),
-            updatedAt: new Date("2024-10-04"),
-          }
-        ],
-        createdAt: new Date("2024-10-04"),
-        updatedAt: new Date("2024-10-04"),
-      },
-      createdAt: new Date("2024-10-04"),
-      updatedAt: new Date("2024-10-04"),
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Pagamento realizado / Pagamento recebido",
-      institution: institutions[0],
-      payment: {
-        id: crypto.randomUUID(),
-        dueDate: new Date("2024-10-04"),
-        paymentDate: new Date("2024-10-04"),
-        method: PaymentMethod.TRANSFER,
-        recurrences: [
-          {
-            id: crypto.randomUUID(),
-            amount: 30.0,
-            current: 1,
-            recurrenceAt: new Date("2024-10-04"),
-            recurrenceType: Recurrence.ONCE,
-            createdAt: new Date("2024-10-04"),
-            updatedAt: new Date("2024-10-04"),
-          }
-        ],
-        createdAt: new Date("2024-10-04"),
-        updatedAt: new Date("2024-10-04"),
-      },
-      createdAt: new Date("2024-10-04"),
-      updatedAt: new Date("2024-10-04"),
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Pix Enviado",
-      institution: institutions[0],
-      payment: {
-        id: crypto.randomUUID(),
-        dueDate: new Date("2024-10-04"),
-        paymentDate: new Date("2024-10-04"),
-        method: PaymentMethod.PIX,
-        recurrences: [
-          {
-            id: crypto.randomUUID(),
-            amount: 80.59,
-            current: 1,
-            recurrenceAt: new Date("2024-10-04"),
-            recurrenceType: Recurrence.ONCE,
-            createdAt: new Date("2024-10-04"),
-            updatedAt: new Date("2024-10-04"),
-          }
-        ],
-        createdAt: new Date("2024-10-04"),
-        updatedAt: new Date("2024-10-04"),
-      },
-      createdAt: new Date("2024-10-04"),
-      updatedAt: new Date("2024-10-04"),
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Pagamento realizado / Pagamento recebido",
-      institution: institutions[0],
-      payment: {
-        id: crypto.randomUUID(),
-        dueDate: new Date("2024-10-04"),
-        paymentDate: new Date("2024-10-04"),
-        method: PaymentMethod.TRANSFER,
-        recurrences: [
-          {
-            id: crypto.randomUUID(),
-            amount: 10.0,
-            current: 1,
-            recurrenceAt: new Date("2024-10-04"),
-            recurrenceType: Recurrence.ONCE,
-            createdAt: new Date("2024-10-04"),
-            updatedAt: new Date("2024-10-04"),
-          }
-        ],
-        createdAt: new Date("2024-10-04"),
-        updatedAt: new Date("2024-10-04"),
-      },
-      createdAt: new Date("2024-10-04"),
-      updatedAt: new Date("2024-10-04"),
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Pix Enviado",
-      institution: institutions[0],
-      payment: {
-        id: crypto.randomUUID(),
-        dueDate: new Date("2024-10-04"),
-        paymentDate: new Date("2024-10-04"),
-        method: PaymentMethod.PIX,
-        recurrences: [
-          {
-            id: crypto.randomUUID(),
-            amount: 16.24,
-            current: 1,
-            recurrenceAt: new Date("2024-10-04"),
-            recurrenceType: Recurrence.ONCE,
-            createdAt: new Date("2024-10-04"),
-            updatedAt: new Date("2024-10-04"),
-          }
-        ],
-        createdAt: new Date("2024-10-04"),
-        updatedAt: new Date("2024-10-04"),
-      },
-      createdAt: new Date("2024-10-04"),
-      updatedAt: new Date("2024-10-04"),
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Pagamento realizado / Pagamento recebido",
-      institution: institutions[0],
-      payment: {
-        id: crypto.randomUUID(),
-        dueDate: new Date("2024-10-04"),
-        paymentDate: new Date("2024-10-04"),
-        method: PaymentMethod.TRANSFER,
-        recurrences: [
-          {
-            id: crypto.randomUUID(),
-            amount: 200.0,
-            current: 1,
-            recurrenceAt: new Date("2024-10-04"),
-            recurrenceType: Recurrence.MONTHLY,
-            createdAt: new Date("2024-10-04"),
-            updatedAt: new Date("2024-10-04"),
-          }
-        ],
-        createdAt: new Date("2024-10-04"),
-        updatedAt: new Date("2024-10-04"),
-      },
-      createdAt: new Date("2024-10-04"),
-      updatedAt: new Date("2024-10-04"),
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Pagamento realizado em Digital Goods",
-      institution: institutions[0],
-      payment: {
-        id: crypto.randomUUID(),
-        dueDate: new Date("2024-10-04"),
-        paymentDate: new Date("2024-10-04"),
-        method: PaymentMethod.TRANSFER,
-        recurrences: [
-          {
-            id: crypto.randomUUID(),
-            amount: 17.0,
-            current: 1,
-            recurrenceAt: new Date("2024-10-04"),
-            recurrenceType: Recurrence.ONCE,
-            createdAt: new Date("2024-10-04"),
-            updatedAt: new Date("2024-10-04"),
-          }
-        ],
-        createdAt: new Date("2024-10-04"),
-        updatedAt: new Date("2024-10-04"),
-      },
-      createdAt: new Date("2024-10-04"),
-      updatedAt: new Date("2024-10-04"),
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Pagamento de boleto",
-      institution: institutions[0],
-      payment: {
-        id: crypto.randomUUID(),
-        dueDate: new Date("2024-10-04"),
-        paymentDate: new Date("2024-10-04"),
-        method: PaymentMethod.TRANSFER,
-        recurrences: [
-          {
-            id: crypto.randomUUID(),
-            amount: 321.5,
-            current: 1,
-            recurrenceAt: new Date("2024-10-04"),
-            recurrenceType: Recurrence.MONTHLY,
-            createdAt: new Date("2024-10-04"),
-            updatedAt: new Date("2024-10-04"),
-          }
-        ],
-        createdAt: new Date("2024-10-04"),
-        updatedAt: new Date("2024-10-04"),
-      },
-      createdAt: new Date("2024-10-04"),
-      updatedAt: new Date("2024-10-04"),
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Pix Enviado",
-      institution: institutions[0],
-      payment: {
-        id: crypto.randomUUID(),
-        dueDate: new Date("2024-10-04"),
-        paymentDate: new Date("2024-10-04"),
-        method: PaymentMethod.PIX,
-        recurrences: [
-          {
-            id: crypto.randomUUID(),
-            amount: 150.0,
-            current: 1,
-            recurrenceAt: new Date("2024-10-04"),
-            recurrenceType: Recurrence.MONTHLY,
-            createdAt: new Date("2024-10-04"),
-            updatedAt: new Date("2024-10-04"),
-          }
-        ],
-        createdAt: new Date("2024-10-04"),
-        updatedAt: new Date("2024-10-04"),
-      },
-      createdAt: new Date("2024-10-04"),
-      updatedAt: new Date("2024-10-04"),
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Pagamento realizado / Pagamento recebido",
-      institution: institutions[0],
-      payment: {
-        id: crypto.randomUUID(),
-        dueDate: new Date("2024-10-03"),
-        paymentDate: new Date("2024-10-03"),
-        method: PaymentMethod.TRANSFER,
-        recurrences: [
-          {
-            id: crypto.randomUUID(),
-            amount: 5.72,
-            current: 1,
-            recurrenceAt: new Date("2024-10-03"),
-            recurrenceType: Recurrence.ONCE,
-            createdAt: new Date("2024-10-03"),
-            updatedAt: new Date("2024-10-03"),
-          }
-        ],
-        createdAt: new Date("2024-10-03"),
-        updatedAt: new Date("2024-10-03"),
-      },
-      createdAt: new Date("2024-10-03"),
-      updatedAt: new Date("2024-10-03"),
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Pagamento realizado / Pagamento recebido",
-      institution: institutions[0],
-      payment: {
-        id: crypto.randomUUID(),
-        dueDate: new Date("2024-09-29"),
-        paymentDate: new Date("2024-09-29"),
-        method: PaymentMethod.TRANSFER,
-        recurrences: [
-          {
-            id: crypto.randomUUID(),
-            amount: 15.0,
-            current: 1,
-            recurrenceAt: new Date("2024-09-29"),
-            recurrenceType: Recurrence.ONCE,
-            createdAt: new Date("2024-09-29"),
-            updatedAt: new Date("2024-09-29"),
-          }
-        ],
-        createdAt: new Date("2024-09-29"),
-        updatedAt: new Date("2024-09-29"),
-      },
-      createdAt: new Date("2024-09-29"),
-      updatedAt: new Date("2024-09-29"),
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Pix Enviado",
-      institution: institutions[0],
-      payment: {
-        id: crypto.randomUUID(),
-        dueDate: new Date("2024-09-28"),
-        paymentDate: new Date("2024-09-28"),
-        method: PaymentMethod.PIX,
-        recurrences: [
-          {
-            id: crypto.randomUUID(),
-            amount: 16.0,
-            current: 1,
-            recurrenceAt: new Date("2024-09-28"),
-            recurrenceType: Recurrence.ONCE,
-            createdAt: new Date("2024-09-28"),
-            updatedAt: new Date("2024-09-28"),
-          }
-        ],
-        createdAt: new Date("2024-09-28"),
-        updatedAt: new Date("2024-09-28"),
-      },
-      createdAt: new Date("2024-09-28"),
-      updatedAt: new Date("2024-09-28"),
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Pix Enviado",
-      institution: institutions[0],
-      payment: {
-        id: crypto.randomUUID(),
-        dueDate: new Date("2024-09-17"),
-        paymentDate: new Date("2024-09-17"),
-        method: PaymentMethod.PIX,
-        recurrences: [
-          {
-            id: crypto.randomUUID(),
-            amount: 5.03,
-            current: 1,
-            recurrenceAt: new Date("2024-09-17"),
-            recurrenceType: Recurrence.ONCE,
-            createdAt: new Date("2024-09-17"),
-            updatedAt: new Date("2024-09-17"),
-          }
-        ],
-        createdAt: new Date("2024-09-17"),
-        updatedAt: new Date("2024-09-17"),
-      },
-      createdAt: new Date("2024-09-17"),
-      updatedAt: new Date("2024-09-17"),
-    }
   ];
-  const chartData: Array<ChartData> = [{ month: "Janeiro", salaries: 186, expenses: 80 }];
+
+  // const chartData: Array<ChartData> = [
+  //   { month: "Janeiro", salaries: 186, expenses: 80 },
+  // ];
 
   function formattedCurrencyValue(value: number) {
     return value.toLocaleString("pt-BR", {
@@ -701,42 +220,114 @@ export default async function Home() {
     });
   }
 
-  const currentSalary: number = salaries.reduce((acc, salary) => {
-    if (
-      salary.payment.paymentDate?.getMonth() === currentDate.getMonth() &&
-      salary.payment.paymentDate?.getFullYear() === currentDate.getFullYear()
-    ) {
-      return salary.payment.recurrences[0].amount + acc;
+  function formattedDate(date: Date | null | undefined): string {
+    if (!date) {
+      return "Pagamento não efetuado";
     }
-    return acc;
-  }, 0);
 
-  const previousSalary: number = salaries.reduce((acc, salary) => {
-    if (
-      salary.payment.paymentDate?.getMonth() === currentDate.getMonth() - 1 &&
-      salary.payment.paymentDate?.getFullYear() === currentDate.getFullYear()
-    ) {
-      return salary.payment.amount + acc;
-    }
-    return acc;
-  }, 0);
+    const dateObj = new Date(date);
+
+    return dateObj.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  }
+
+  // 1. Filter: Pega apenas os 'incomes' que são do mês/ano atual.
+  const incomesThisMonth = incomes.filter((income) =>
+    income.transactions.some((transaction) => {
+      if (!transaction.paymentDate) return false;
+      const transactionDate = new Date(transaction.paymentDate.toString());
+
+      // Usando a lógica UTC que definimos
+      return (
+        transactionDate.getUTCMonth() === currentDate.getUTCMonth() &&
+        transactionDate.getUTCFullYear() === currentDate.getUTCFullYear()
+      );
+    }),
+  );
+
+  // 2. FlatMap: Extrai TODAS as transações de todos os incomes filtrados em um único array.
+  const allTransactionsThisMonth = incomesThisMonth.flatMap(
+    (income) => income.transactions,
+  );
+
+  // 3. Reduce: Agora, com um array simples de transações, faz a soma final.
+  const currentSalary = allTransactionsThisMonth.reduce(
+    (acc, transaction) => acc + transaction.amount,
+    0,
+  );
+
+  console.log("incomesThisMonth:", incomesThisMonth);
+  console.log("allTransactionsThisMonth:", allTransactionsThisMonth);
+  console.log("Salário do mês atual:", currentSalary);
 
   const currentExpense: number = expenses.reduce((acc, expense) => {
+    // verificar se o expense é do mês atual
     if (
-      expense.payment.paymentDate?.getMonth() === currentDate.getMonth() &&
-      expense.payment.paymentDate?.getFullYear() === currentDate.getFullYear()
+      expense.transactions.some(
+        (transaction) =>
+          transaction.paymentDate &&
+          new Date(transaction.paymentDate).getMonth() ===
+            currentDate.getMonth() &&
+          new Date(transaction.paymentDate).getFullYear() ===
+            currentDate.getFullYear(),
+      )
     ) {
-      return expense.payment.amount + acc;
+      return (
+        acc +
+        expense.transactions.reduce(
+          (acc, transaction) => acc + transaction.amount,
+          0,
+        )
+      );
+    }
+    return acc;
+  }, 0);
+
+  const previousSalary: number = incomes.reduce((acc, income) => {
+    // verificar se o income é do mês anterior
+    if (
+      income.transactions.some(
+        (transaction) =>
+          transaction.paymentDate &&
+          new Date(transaction.paymentDate).getMonth() ===
+            currentDate.getMonth() - 1 &&
+          new Date(transaction.paymentDate).getFullYear() ===
+            currentDate.getFullYear(),
+      )
+    ) {
+      return (
+        acc +
+        income.transactions.reduce(
+          (acc, transaction) => acc + transaction.amount,
+          0,
+        )
+      );
     }
     return acc;
   }, 0);
 
   const previousExpense: number = expenses.reduce((acc, expense) => {
+    // verificar se o expense é do mês anterior
     if (
-      expense.payment.paymentDate?.getMonth() === currentDate.getMonth() - 1 &&
-      expense.payment.paymentDate?.getFullYear() === currentDate.getFullYear()
+      expense.transactions.some(
+        (transaction) =>
+          transaction.paymentDate &&
+          new Date(transaction.paymentDate).getMonth() ===
+            currentDate.getMonth() - 1 &&
+          new Date(transaction.paymentDate).getFullYear() ===
+            currentDate.getFullYear(),
+      )
     ) {
-      return expense.payment.amount + acc;
+      return (
+        acc +
+        expense.transactions.reduce(
+          (acc, transaction) => acc + transaction.amount,
+          0,
+        )
+      );
     }
     return acc;
   }, 0);
@@ -775,18 +366,48 @@ export default async function Home() {
     return "Gasto atual é igual ao gasto anterior.";
   }
 
-  function getLastWeekExpenses(): Array<Expense> {
-    const lastWeekDate = new Date();
-    lastWeekDate.setDate(currentDate.getDate() - 7);
+  // function getLastWeekExpenses(): Array<Expense> {
+  //   const lastWeekDate = new Date();
+  //   lastWeekDate.setDate(currentDate.getDate() - 7);
 
-    return expenses.filter(
-      (expense) =>
-        expense.isPaid &&
-        expense.paymentDate &&
-        new Date(expense.paymentDate) >= lastWeekDate &&
-        new Date(expense.paymentDate) <= currentDate,
+  //   return expenses.filter((expense) =>
+  //     expense.transactions.some(
+  //       (transaction) =>
+  //         transaction.paymentDate &&
+  //         new Date(transaction.paymentDate) >= lastWeekDate &&
+  //         new Date(transaction.paymentDate) <= currentDate,
+  //     ),
+  //   );
+  // }
+
+  const getAllRecords = (
+    incomesList: Income[],
+    expensesList: Expense[],
+  ): EnrichedTransaction[] => {
+    const enrichedIncomes: EnrichedTransaction[] = incomesList.flatMap(
+      (income) =>
+        income.transactions.map((transaction) => ({
+          ...transaction,
+          parentTitle: income.title,
+          parentInstitution: income.institution,
+          type: "income",
+        })),
     );
-  }
+
+    const enrichedExpenses: EnrichedTransaction[] = expensesList.flatMap(
+      (expense) =>
+        expense.transactions.map((transaction) => ({
+          ...transaction,
+          parentTitle: expense.title,
+          parentInstitution: expense.institution,
+          type: "expense",
+        })),
+    );
+
+    return [...enrichedIncomes, ...enrichedExpenses].sort(
+      (a, b) => b.dueDate.getTime() - a.dueDate.getTime(),
+    );
+  };
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-between space-y-4">
@@ -845,13 +466,6 @@ export default async function Home() {
                   {getSalaryDifferenceMessage()}
                 </div>
               </CardContent>
-              <CardFooter>
-                <Progress
-                  value={currentSalary}
-                  max={currentSalary}
-                  aria-label={getSalaryDifferenceMessage()}
-                />
-              </CardFooter>
             </Card>
             <Card x-chunk="dashboard-05-chunk-2">
               <CardHeader className="pb-2">
@@ -865,30 +479,20 @@ export default async function Home() {
                   {getExpenseDifferenceMessage()}
                 </div>
               </CardContent>
-              <CardFooter>
-                <Progress
-                  value={currentExpense}
-                  max={currentSalary}
-                  aria-label={getExpenseDifferenceMessage()}
-                />
-              </CardFooter>
             </Card>
           </div>
-          <Tabs defaultValue="week">
+          <Tabs defaultValue="all">
             <div className="flex items-center bg-pink-600">
               <TabsList>
-                <TabsTrigger value="week">Semana</TabsTrigger>
-                <TabsTrigger value="month">Mês</TabsTrigger>
-                <TabsTrigger value="year">Ano</TabsTrigger>
+                <TabsTrigger value="all">Todos Registros</TabsTrigger>
+                <TabsTrigger value="month">Saídas</TabsTrigger>
+                <TabsTrigger value="year">Entradas</TabsTrigger>
               </TabsList>
             </div>
-            <TabsContent value="week">
+            <TabsContent value="all">
               <Card x-chunk="dashboard-05-chunk-3">
                 <CardHeader className="px-7">
-                  <CardTitle>Gastos Recentes</CardTitle>
-                  <CardDescription>
-                    Gastos dos últimos 7 dias com base nos seus registros.
-                  </CardDescription>
+                  <CardTitle>Registros Recentes</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Table>
@@ -902,35 +506,56 @@ export default async function Home() {
                           Situação
                         </TableHead>
                         <TableHead className="hidden md:table-cell">
-                          Data de Pagamento
+                          Data do Pagamento
                         </TableHead>
                         <TableHead>Valor</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {getLastWeekExpenses().map((expense) => (
-                        <TableRow key={expense.id}>
+                      {getAllRecords(incomes, expenses).map((record) => (
+                        <TableRow key={record.id}>
                           <TableCell>
                             <div className="font-medium">
-                              {expense.title}
+                              {record.parentTitle}
                             </div>
                             <div className="hidden text-sm text-muted-foreground md:inline">
-                              {expense.institution.name}
+                              {record.parentInstitution.name}
                             </div>
                           </TableCell>
                           <TableCell className="hidden sm:table-cell">
-                            {expense.payment.method}
+                            {record.method}
                           </TableCell>
-                          <TableCell className="hidden sm:table-cell">
+                          {/*<TableCell className="hidden sm:table-cell">
                             <Badge className="text-xs" variant="outline">
-                              {expense.payment.recurrences[expense.payment.recurrences.length - 1].recurrenceAt ? "Pago" : "Pendente"}
+                              {record.paymentDate ? "Pago" : "Pendente"}
+                            </Badge>
+                          </TableCell> */}
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className={cn("text-xs font-medium", {
+                                "text-blue-700 border-blue-300 dark:text-blue-400 dark:border-blue-500":
+                                  record.paymentDate,
+                                "text-amber-700 border-amber-400 dark:text-amber-300 dark:border-amber-500":
+                                  !record.paymentDate,
+                              })}
+                            >
+                              {record.paymentDate ? "Pago" : "Pendente"}
                             </Badge>
                           </TableCell>
                           <TableCell className="hidden md:table-cell">
-                            {expense.payment.recurrences[expense.payment.recurrences.length - 1].recurrenceAt?.toLocaleDateString("pt-BR")}
+                            {formattedDate(record.paymentDate)}
                           </TableCell>
                           <TableCell className="text-left">
-                            {formattedCurrencyValue(expense.payment.recurrences[expense.payment.recurrences.length - 1].amount)}
+                            <span
+                              className={
+                                record.type === "income"
+                                  ? "text-green-500"
+                                  : "text-red-500"
+                              }
+                            >
+                              {formattedCurrencyValue(record.amount)}
+                            </span>
                           </TableCell>
                         </TableRow>
                       ))}
